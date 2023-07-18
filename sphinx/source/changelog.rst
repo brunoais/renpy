@@ -53,6 +53,9 @@ The ``jump expression`` statement can now take a local label name of the form
 ".local_name". Previously, only "global_name" or "global_name.local_name" were
 allowed.
 
+:ref:`input-values` now take an optional `disable_on_enter` parameter which
+makes them disable themselves when the enter key is pressed.
+
 
 Other Changes
 -------------
