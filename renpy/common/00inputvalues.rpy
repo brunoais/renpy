@@ -83,18 +83,20 @@ init -1510 python:
         default = True
         editable = True
         returnable = False
+        disable_on_enter = False
 
         def get_text(self):
-            raise Exception("Not implemented.")
+            raise NotImplementedError
 
         def set_text(self, s):
-            raise Exception("Not implemented.")
+            raise NotImplementedError
 
         def enter(self):
             if self.returnable:
                 return self.get_text()
-            else:
-                return None
+            elif self.disable_on_enter:
+                renpy.run(self.Disable())
+                raise renpy.IgnoreEvent()
 
         def Enable(self):
             if self.editable:
@@ -134,12 +136,16 @@ init -1510 python:
         `returnable`
             If true, the value of this input will be returned when the
             user presses enter.
+
+        `disable_on_enter`
+            If true, and if `returnable` is not true, pressing enter
+            will disable this input.
         """
 
         identity_fields = [ ]
         equality_fields = [ "variable", "returnable" ]
 
-        def __init__(self, variable, default=True, returnable=False):
+        def __init__(self, variable, default=True, returnable=False, disable_on_enter=False):
             self.variable = variable
 
             self.default = default
@@ -167,12 +173,16 @@ init -1510 python:
         `returnable`
             If true, the value of this input will be returned when the
             user presses enter.
+
+        `disable_on_enter`
+            If true, and if `returnable` is not true, pressing enter
+            will disable this input.
         """
 
         identity_fields = [ 'screen' ]
         equality_fields = [ "variable", "returnable" ]
 
-        def __init__(self, variable, default=True, returnable=False):
+        def __init__(self, variable, default=True, returnable=False, disable_on_enter=False):
             self.variable = variable
 
             self.default = default
@@ -205,12 +215,16 @@ init -1510 python:
         `returnable`
             If true, the value of this input will be returned when the
             user presses enter.
+
+        `disable_on_enter`
+            If true, and if `returnable` is not true, pressing enter
+            will disable this input.
         """
 
         identity_fields = [ "object"]
         equality_fields = [ "field", "returnable" ]
 
-        def __init__(self, object, field, default=True, returnable=False):
+        def __init__(self, object, field, default=True, returnable=False, disable_on_enter=False):
             self.object = object
             self.field = field
 
@@ -237,12 +251,16 @@ init -1510 python:
         `returnable`
             If true, the value of this input will be returned when the
             user presses enter.
+
+        `disable_on_enter`
+            If true, and if `returnable` is not true, pressing enter
+            will disable this input.
         """
 
         identity_fields = [ "dict", "key" ]
         equality_fields = [ "returnable" ]
 
-        def __init__(self, dict, key, default=True, returnable=False):
+        def __init__(self, dict, key, default=True, returnable=False, disable_on_enter=False):
             self.dict = dict
             self.key = key
 
