@@ -1096,6 +1096,44 @@ def _compile_pattern(pat, case_sensitive):
 type RenpyLoadableMode = Literal["r", "rb", "br"]
 
 class RenpyPath(PurePosixPath):
+    """
+    :doc: renpy_path class
+    :args: (path)
+    :name: RenpyPath
+
+    A `PathLike <https://docs.python.org/3/library/os.html#os.PathLike>`_
+    for working with Ren'Py game files. It provides the complete
+    `pathlib.PurePath <https://docs.python.org/3/library/pathlib.html#pathlib.PurePath>`_
+    and, additionally, some of
+    `pathlib.Path <https://docs.python.org/3/library/pathlib.html#pathlib.Path>`_
+    behavior. Except that it works on top of the file list like the one returned
+    by :func:`list_files` instead of the filesystem.
+    The files are discovered using Ren'Py's standard search method, and may
+    reside in the game directory, in an RPA archive, as an Android asset,
+    in a remote server, or in any additional location a plugin may provide.
+
+    `path`
+        A string giving the path relative to one of the locations Ren'Py can find
+        such as :var:`config.searchpath` directories or :var:`renpy.config.gamedir`.
+        Like all paths in Ren'Py, uses forward slashes as directory separators.
+
+    RenpyPath objects are not saved as part of the game state and must
+    not be stored in variables that participate in rollback.
+
+    Directories are inferred from the files Ren'Py knows about. A
+    directory only exists when it has a descendant file (i.e. a file
+    that would appear in :func:`list_files`). Therefore, methods like :meth:`is_dir`
+    and :meth:`iterdir` will never find empty directories.
+
+    Use the ``/`` python operator to join path components the same way as pathlib.
+    See `pathlib operators <https://docs.python.org/3/library/pathlib.html#operators>`_.
+
+    For attributes and methods not documented here, refer to
+    `PurePath <https://docs.python.org/3/library/pathlib.html#pure-paths>`_.
+    RenpyPath faithfully provides all methods and attributes of PurePath.
+
+    """
+
     __slots__ = ('_range_start', '_range_end', '_is_dir', '_prefix_length', '_as_path')
 
     _paths: tuple[str, ...]
@@ -1166,6 +1204,13 @@ class RenpyPath(PurePosixPath):
 
 
     def exists(self, *, follow_symlinks: bool = True) -> bool:
+        """
+        :doc: renpy_path method
+
+        Returns True if this path corresponds to a known file or an
+        inferred directory.
+        """
+
         try:
             return self._range_start < self._range_end
         except AttributeError:
@@ -1173,6 +1218,14 @@ class RenpyPath(PurePosixPath):
             return self._range_start < self._range_end
 
     def is_dir(self) -> bool:
+        """
+        :doc: renpy_path method
+
+        Returns True if this path corresponds to an inferred directory.
+        Ren'Py infers directories from existing files.
+        A descendant file must exist for the directory to exist.
+        """
+
         try:
             return self._is_dir
         except AttributeError:
@@ -1180,6 +1233,12 @@ class RenpyPath(PurePosixPath):
             return self._is_dir
 
     def is_file(self) -> bool:
+        """
+        :doc: renpy_path method
+
+        Returns True if this path points to a known file.
+        """
+
         try:
             return not self._is_dir and self._range_start + 1 == self._range_end
         except AttributeError:
@@ -1187,6 +1246,13 @@ class RenpyPath(PurePosixPath):
             return not self._is_dir and self._range_start + 1 == self._range_end
 
     def is_remote_file(self):
+        """
+        :doc: renpy_path method
+
+        Returns True if this file is a remote asset that may need to be
+        downloaded before it can be used.
+        """
+
         if not self.is_file():
             return False
         tail = self._tail
@@ -1195,6 +1261,12 @@ class RenpyPath(PurePosixPath):
         return '/'.join(tail) in remote_files
 
     def samefile(self, other):
+        """
+        :doc: renpy_path method
+
+        Returns True if, after resolving, both paths are equal. False otherwise.
+        """
+
         try:
             # Ranges are fastest to compare but slowest to calculate
             return self is other or (
@@ -1240,15 +1312,41 @@ class RenpyPath(PurePosixPath):
             file_i = child_range_end
 
     def iterdir(self) -> Generator['RenpyPath', None, None]:
+        """
+        :doc: renpy_path method
+
+        Yields RenpyPath objects for each entry in the directory this path
+        points to. Like
+        `Path <https://docs.python.org/3/library/pathlib.html#pathlib.Path.iterdir>`_,
+        raises FileNotFoundError if the path is not known, and
+        NotADirectoryError if it is not a directory.
+        """
+
         yield from self._iter_children(self._create)
 
     @contextlib.contextmanager
     def scandir(self) -> Generator[Iterator[RenpyPathDirEntry], None, None]:
+        """
+        :doc: renpy_path method
+
+        Returns a list of RenpyPathDirEntry objects for each entry in the
+        directory this path points to. Each DirEntry has ``name``, ``path``,
+        ``is_dir()``, and ``is_file()``, similar to
+        `os.scandir <https://docs.python.org/3/library/os.html#os.scandir>`_.
+        """
+
         yield self._iter_children(RenpyPathDirEntry)
 
     _scandir = scandir
 
     def walk(self, top_down: bool = True, on_error=None, follow_symlinks: bool = False):
+        """
+        :doc: renpy_path method
+
+        Walks the directory tree rooted at this path, yielding
+        ``(dirpath, dirnames, filenames)`` tuples, similar to :func:`os.walk`.
+        """
+
         if not self.is_dir():
             return
 
@@ -1273,6 +1371,14 @@ class RenpyPath(PurePosixPath):
     _make_child_relpath = Path._make_child_relpath
 
     def glob(self, pattern: str, *, case_sensitive: bool | None = None) -> Generator['RenpyPath', None, None]:
+        """
+        :doc: renpy_path method
+
+        Yields RenpyPath objects matching the given glob `pattern` relative
+        to this directory. Works the same way as
+        `pathlib.Path.glob <https://docs.python.org/3/library/pathlib.html#pathlib.Path.glob>`_.
+        """
+
         if not self.exists():
             raise FileNotFoundError(f"[Errno 2] No such file or directory: '{self}'")
         if pattern == '*':
@@ -1294,7 +1400,14 @@ class RenpyPath(PurePosixPath):
 
 
     def rglob(self, pattern: str, *, case_sensitive: bool | None = None) -> Generator['RenpyPath', None, None]:
-        """Direct tuple slice iteration - cache friendly and fast."""
+        """
+        :doc: renpy_path method
+
+        Like :meth:`glob`, but prepends ``**`` to the pattern, matching
+        recursively in all subdirectories. Works the same way as
+        `pathlib.Path.rglob <https://docs.python.org/3/library/pathlib.html#pathlib.Path.rglob>`_.
+        """
+
         if not self.exists():
             raise FileNotFoundError(f"[Errno 2] No such file or directory: '{self}'")
 
@@ -1302,9 +1415,24 @@ class RenpyPath(PurePosixPath):
 
 
     def is_absolute(self) -> bool:
+        """
+        :doc: renpy_path method
+
+        Returns False.
+        RenpyPath paths are always relative to a base directory, so this always returns False.
+        This method exists for completeness sake.
+        """
+
         return False
 
     def as_path(self) -> Path:
+        """
+        :doc: renpy_path method
+
+        Returns a standard :class:`pathlib.Path` pointing to this file on
+        disk. Searches all directories in the search path. Falls back to the game directory.
+        """
+
         try:
             return self._as_path
         except AttributeError:
@@ -1334,7 +1462,27 @@ class RenpyPath(PurePosixPath):
 
     def open(self, mode="r", *args, _tl=False, encoding=None, **kwargs) -> io.BufferedReader | io.TextIOWrapper:
         """
-        Opens the resource for reading.
+        :doc: renpy_path method
+
+        Opens this file for reading.
+        Similar to :func:`renpy.open_file` but with fundamental differences:
+        - ``encoding`` does not dictate whether file is open in binary mode.
+        - You cannot provide a directory to search relative to.
+
+        `mode`
+            Either ``"r"`` for text mode or ``"rb"`` for binary mode.
+
+        `encoding`
+            Only has an effect when :attr:`mode` is ``r``.
+            Specifies the encoding to use when opening the file.
+            If None, the default, the encoding is taken from :var:`config.open_file_encoding`.
+            In most cases, None means decode in UTF-8.
+
+        Other arguments are passed-through to
+        `io.TextIOWrapper <https://docs.python.org/3/library/io.html#io.TextIOWrapper>`_.
+
+        Returns an :class:`io.BufferedReader` in binary mode, or an
+        :class:`io.TextIOWrapper` in text mode.
         """
 
         if not self.is_file():
@@ -1351,16 +1499,34 @@ class RenpyPath(PurePosixPath):
 
 
     def read_text(self, encoding=None) -> str:
+        """
+        :doc: renpy_path method
+
+        Reads and returns the entire file contents as a string.
+        """
+
         with self.open("r", encoding=encoding) as f:
             assert isinstance(f, io.TextIOWrapper)
             return f.read()
 
     def read_bytes(self) -> bytes:
+        """
+        :doc: renpy_path method
+
+        Reads and returns the entire file contents as bytes.
+        """
+
         with self.open("rb") as f:
             assert isinstance(f, io.BufferedReader)
             return f.read()
 
     def resolve(self, strict=False):
+        """
+        :doc: renpy_path method
+
+        Returns a new RenpyPath with ``..`` and ``.`` segments resolved.
+        """
+
         tail = self._tail
         if '.' not in tail and '..' not in tail:
             return self
@@ -1379,12 +1545,29 @@ class RenpyPath(PurePosixPath):
 
     @classmethod
     def current_path_line(cls):
+        """
+        :doc: renpy_path method
+        :name: RenpyPath.current_path_line
+
+        Returns a ``(path, line)`` tuple giving the RenpyPath and line
+        number of the Ren'Py script statement that is currently executing.
+        Analogous to :func:`renpy.get_filename_line` except instead
+        of filename, it is a RenpyPath.
+        """
+
         from renpy.exports.debugexports import get_filename_line
         fn, line = get_filename_line()
         path = cls._from_parsed_parts('', '', os.path.split(fn))
         return path, line
 
     def rpy_path(self):
+        """
+        :doc: renpy_path method
+
+        Returns a RenpyPath pointing to the ``.rpy``, ``.rpym``, or ``_ren.py`` source
+        file corresponding to this ``.rpyc`` or ``.rpymc`` path.
+        """
+
         if self.is_dir():
             raise IsADirectoryError(f"Directories are not renpy files and can't be rpyc. '{str(self)}' is a directory")
 
@@ -1403,6 +1586,12 @@ class RenpyPath(PurePosixPath):
         return without_c
 
     def rpyc_path(self):
+        """
+        :doc: renpy_path method
+
+        Returns a RenpyPath pointing to the ``.rpyc`` compiled file
+        corresponding to this ``.rpy``, ``.rpym``, or ``_ren.py`` path.
+        """
 
         if self.is_dir():
             raise IsADirectoryError(f"Directories are not renpy files and can't be rpy. '{str(self)}' is a directory")
@@ -1420,6 +1609,16 @@ class RenpyPath(PurePosixPath):
         return name + "c"
 
     def build_classify(self, file_list):
+        """
+        :doc: renpy_path method
+
+        Classifies this path for the build system using :func:`build.classify`.
+        If the path is a directory, all files under it are classified the same way.
+
+        `file_list`
+            The file list to classify into. See :doc:`build` on how classification works.
+        """
+
         from renpy import store
 
         pattern = str(self)

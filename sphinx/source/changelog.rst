@@ -13,6 +13,9 @@ Changelog (Ren'Py 7.x-)
 Features
 --------
 
+Added :class:`RenpyPath`, a `PathLike <https://docs.python.org/3/library/os.html#os.PathLike>`_
+convenience wrapper around Ren'Py's own file listing. See :ref:`renpy_path_class`.
+
 Text shaders now support the ``u_text_time`` uniform, which is the time in seconds since the start of the text effect.
 
 Text interpolation now supports the ``!f`` flag, which passes interpolated text through :var:`config.say_menu_text_filter`.
